@@ -99,6 +99,8 @@ determines the primitive, because the primitives mean different things:
   and it doubles as the degree of belief.
 - A position along an ordered dimension → **Score**. The value is
   probability-weighted across levels you describe in words.
+- Where something is in an image → **Box** (beta, Jev 1.14). Four edges as
+  fractions of the image, plus confidence; pair it with a Noul for presence.
 
 If the consumer wants prose, keep the LLM. If it wants a number code can
 compute, write code. Read `references/jev-contract.md` for the exact shapes.

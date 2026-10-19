@@ -39,7 +39,8 @@ What the questions are judged against. Pass it directly to the SDK.
 | object | named fields, records, app state (preferred) | `{"ticket": {...}, "policy": "..."}` |
 | array | sequences of messages or records | `["Hi", "Charged twice"]` |
 
-- Text only. Pre-process images/audio/video/binaries to text or structured fields.
+- Text, plus images in beta (see [Images (beta)](#images-beta)). Pre-process audio, video and other
+  binaries to text or structured fields.
 - Prefer named JSON fields. Reference nested values in questions with backticked
   dot-paths: `` "Does `ticket.messages[0].text` request a refund?" ``.
 - Include only what the questions need. Unrelated detail reduces accuracy.
@@ -119,6 +120,40 @@ For ranking, sort by probabilities (a Noul's value or a Choice's top probability
 confidence. Useful alternatives: top probability `p_max`, and top-to-second ratio
 `p_max / p_second`.
 
+## Images (beta)
+
+TypeSafe marks images as "dreamer-ready": fine for prototypes, but the format, answers and limits can change between
+releases. Calibrate on your own images before you gate anything on them.
+
+- Send the header `TypeSafe-Danger-Zone-Images: true` on every request that holds an image or a Box question.
+- List each image once in a top-level `assets` map, keyed by a reference string. Put the reference wherever the image
+  belongs: in `state`, in a question's `instructions`, or in `criteria`. Every asset must be referenced, else `400`.
+- Asset fields: `type: "image"` (optional), `format: "png" | "jpg" | "jpeg"`, and `data_base64` (no `data:` prefix),
+  or `part` for a multipart upload.
+- References are matched as plain text anywhere in the request, so use a fresh UUID per image. Each use of a reference
+  adds another copy of the image to what the model reads.
+- Jev 1.13 and 1.14 both accept images. The SDKs create references for you (`Image(...)` in Python, `image(...)` in JS).
+- Images are data like any other state: visible text in an image (a phone number, a name) reaches the model. Redact it
+  first if it must not.
+
+```json
+{
+  "model": "jev-1.14.0",
+  "state": {"page_name": "Acme Tools", "ad": "3f9c1e2a-ad"},
+  "assets": {"3f9c1e2a-ad": {"type": "image", "format": "png", "data_base64": "iVBORw0KGgo..."}},
+  "questions": {
+    "same_business": {"type": "noul", "instructions": "Is the business in `ad` the same business as `page_name`?"}
+  }
+}
+```
+
+### Box (beta, Jev 1.14 only)
+
+A Box question finds one target in an image. `{"type": "box", "instructions": "the coffee mug in `photo`"}`, no
+criteria. The answer is `box: {top, bottom, left, right}` as fractions of the image (origin top-left) plus
+`confidence`. A Box always returns a box, even when the target is absent, so pair it with a Noul "Is there a ... in
+`photo`?" and ignore the box when that is low. One target per Box question.
+
 ## Python SDK
 
 ```sh
@@ -193,11 +228,11 @@ console.log(response.answers.category.choice);
 
 | Item | Value |
 | - | - |
-| Model | `jev-latest` resolves to `jev-1.13.0`. Pin the version when thresholds were tuned on it |
-| Context | 64k tokens per request; 32k for state plus the longest question |
+| Models | `jev-1.14.0` (released 14 Oct 2026) and `jev-1.13.0`. Alias `jev-latest` = `jev-1.13.0` (newest stable), `jev-preview` = `jev-1.14.0` (newest release). Aliases move; pin the version when thresholds were tuned on it |
+| Context | 64k tokens per request; 32k for state plus the longest question. Header `TypeSafe-Danger-Zone-Long-Context: true` raises both to 262k, same price, slower and less accurate |
 | Latency | about 100 ms typical |
 | Price | $0.042 per million input tokens; output tokens free |
-| Rate limits | 100k tokens/s and 80 requests/s; `429` or `529` when exceeded |
+| Rate limits | Set per organization (tokens/s and requests/s), shown in the developer console; `429` when exceeded |
 | Errors | `401` bad key, `422` request validation, `429` rate limit, `529` overloaded |
 | Retries | SDKs retry with backoff by default and honor `retry-after` |
 | Token accounting | `usage.input_tokens` / `usage.output_tokens` per response |
