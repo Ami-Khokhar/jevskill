@@ -105,7 +105,7 @@ Useful shapes, each with the idea behind it.
 
 ## Model limitations as design inputs
 
-Observed behavior of `jev-1.13`; newer versions may differ, and the live page is
+Observed behavior of `jev-1.13`; `jev-1.14` (released 14 Oct 2026) may differ, and the live page is
 https://docs.typesafe.ai/model-jaggedness/jev-1.13.md. These shape the design;
 they rarely rule a use case out.
 
